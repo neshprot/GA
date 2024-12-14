@@ -1,0 +1,17 @@
+Sets
+Set1 R H K D E S T N Q C G P A V I L M F Y W
+
+Pulls
+Pull1 S T C N Q Y
+Pull2 S T N Q C G P A V I L M F Y
+Pull3 D
+Pull4 E
+Pull5 M F Y
+Pull6 S T N C G P A V I
+Pull7 Y F
+
+Probs
+Set1 Pull2 100 50
+
+Constraints
+Positions 189 148 121 122 144 145 125 93 92 96 218 52 56 23 Pull7
