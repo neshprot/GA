@@ -51,7 +51,7 @@ constraints.add(f3)
 evolve = ProteinEvolution(pop_set=[], save_file='computed_proteins', logger=logger, positionsset=positionsset, checker=constraints,
                           input_file=compute_lmb_inf, output_file=compute_lmb_ouf, tred_number=tred_number)
 evolve.generate_populations(default_sequence=sequence, default_descriptors=descriptors,
-                               pop_size=pop_size, pop_count=pop_count, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob)
+                               pop_size=pop_size, pop_count=pop_count, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob, weights=weights)
 ini_step = 1
 sets, pulls, probs, consts = read_replacements('sites')
 

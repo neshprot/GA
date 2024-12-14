@@ -244,8 +244,18 @@ class ProteinEvolution():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
 
-    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob):
-        distribution_weights = np.linspace(0, 1, pop_count)
+    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob, weights):
+        distribution_weights = [np.array([0.5]*len(weights))*np.array(weights)]
+        if len(weights) == 1:
+            alpha = 0
+        else:
+            alpha = 0.25
+        for i in range(-round(pop_count/2), round(pop_count/2)+1):
+            weight = []
+            for j in weights:
+                weight.append([0.5*j + alpha*i])
+            distribution_weights.append(weight)
+            print(weight)
         for i in range(pop_count):
             population = []
 
@@ -254,7 +264,6 @@ class ProteinEvolution():
             while len(population) < pop_size:
                 protein = Protein.create_protein(default_sequence, default_sequence, descriptor=default_descriptors)
                 population.append(protein)
-            pop = Population(population, mut_prob, mut_num, cros_prob,
-                             [distribution_weights[i], distribution_weights[::-1][i]])
+            pop = Population(population, mut_prob, mut_num, cros_prob, distribution_weights[i])
             pop.compute_fitness()
             self._pop_set.append(pop)
