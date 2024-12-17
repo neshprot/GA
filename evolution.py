@@ -245,17 +245,70 @@ class ProteinEvolution():
             self._logger("\n")
 
     def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob, weights):
-        distribution_weights = [np.array([0.5]*len(weights))*np.array(weights)]
-        if len(weights) == 1:
-            alpha = 0
-        else:
-            alpha = 0.25
-        for i in range(-round(pop_count/2), round(pop_count/2)+1):
-            weight = []
-            for j in weights:
-                weight.append([0.5*j + alpha*i])
-            distribution_weights.append(weight)
-            print(weight)
+        def nested_loops(lists, index=0, current_combination=None):
+            """
+            Рекурсивно обходит N вложенных списков.
+
+            Args:
+                lists: Список списков.
+                index: Текущий уровень вложенности (начинается с 0).
+                current_combination: Текущая комбинация элементов (используется для рекурсии).
+
+            Yields:
+                Кортежи, представляющие все возможные комбинации элементов из списков.
+            """
+            if index == len(lists):
+                yield current_combination
+                return
+
+            for item in lists[index]:
+                yield from nested_loops(lists, index + 1,
+                                        current_combination + (item,) if current_combination else (item,))
+
+        def select_elements_distributed(arr, num_elements):
+            """
+            Выбирает num_elements равнораспределенных элементов из массива, включая первый и последний.
+
+            Args:
+                arr: Исходный массив.
+                num_elements: Количество элементов для выбора.
+
+            Returns:
+                Список выбранных элементов или None, если num_elements некорректен или длина массива недостаточна.
+            """
+            n = len(arr)
+            if num_elements < 2 or num_elements > n or n == 0:
+                return arr
+
+            indices = [0]  # Первый элемент
+            if num_elements > 2:
+                step = (n - 1) / (num_elements - 1)  # Шаг между элементами
+                for i in range(1, num_elements - 1):
+                    indices.append(int(round(i * step)))  # Округление для целочисленных индексов
+
+            indices.append(n - 1)  # Последний элемент
+
+            selected_elements = [arr[i] for i in indices]
+            return selected_elements
+
+        weight_line = []
+        copied_list = [list(np.linspace(0, 1, int(pop_count / len(weights)) + 1))]
+        for _ in range(len(weights)):
+            weight_line.append(copied_list[0][:])
+
+        distribution_weights = []
+        for combination in nested_loops(weight_line):
+            if any(combination) == 0:
+                continue
+            total = sum(combination)
+            normalized_comb = [round(x / total, 2) for x in combination]
+            distribution_weights.append(list(np.array(normalized_comb) * weights))
+        unique_weights = list(set(tuple(lst) for lst in distribution_weights))
+        if pop_count == 1:
+            unique_weights = [[1, 1]]
+        sorted_data = sorted(unique_weights, key=lambda x: tuple(x))
+        selected_weights = select_elements_distributed(sorted_data, pop_count)
+
         for i in range(pop_count):
             population = []
 
