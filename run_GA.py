@@ -17,7 +17,6 @@ descriptors = [float(x) for x in config['PDB']['Descriptors'].split()]
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 mut_num = int(config['PARAMS']['MutNum'])
-eval_param = float(config['PARAMS']['EvalParam'])
 pop_size = int(config['PARAMS']['PopSize'])
 weights = [float(x) for x in config['PARAMS']['Weights'].split()]
 compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
