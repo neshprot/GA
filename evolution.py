@@ -69,11 +69,6 @@ class ProteinEvolution():
                         new_value = old_gene.value
                     else:
                         new_value = random.choice(pulls[pull])
-                    if position == 188 or position == 60:
-                        if random.random() <= 0.5:
-                            new_value = random.choice(['F', 'Y'])
-                        else:
-                            new_value = old_gene.value
 
                     if int(position) in consts:
                         if new_value in pulls[consts[int(position)][0]]:
@@ -190,22 +185,27 @@ class ProteinEvolution():
             end = start + chunk_size + (1 if i < remainder else 0)
             chunks.append(proteins_for_computing[start:end])
             start = end
+        number_of_chunks = 0
         # safe each chunk to a separate file
         for i, chunk in enumerate(chunks):
+            if not chunk:
+                continue
+            number_of_chunks += 1
             with open(".tempfile", "w") as ouf:
                 for protein in chunk:
                     for idx, g1, g2 in protein.get_differences():
                         ouf.write(f"{g1}/{idx}/{g2} ")
-                    ouf.write("\n")
             os.rename(".tempfile", f'{self._output_file}_{pop_num}_{i+1}')
 
-        return proteins_for_computing
+        return proteins_for_computing, number_of_chunks
 
-    def compute_input(self, proteins_for_computing):
+    def compute_input(self, proteins_for_computing, chunk_numbers):
         # Wait results
         for pop_num, population in enumerate(self._pop_set):
             descriptors = []
-            for tred_counter in range(1, self._tred_number + 1):
+            if not chunk_numbers[pop_num]:
+                continue
+            for tred_counter in range(1, chunk_numbers[pop_num] + 1):
                 while not os.path.exists(f'{self._input_file}_{pop_num+1}_{tred_counter}'):
                     time.sleep(1)
 
@@ -236,6 +236,13 @@ class ProteinEvolution():
             with open(self._save_file, 'a') as f:
                 f.write(f"{sequence} {' '.join(map(str, descriptors))}\n")
 
+    def read_computed(self):
+        if os.path.exists(self._save_file):
+            with open(self._save_file, 'r') as inf:
+                for line in inf.readlines():
+                    words = line.split()
+                    self._computed[words[0]] = [float(desc) for desc in words[1::]]
+
     def print_current_population(self, population):
         for protein in population.population:
             self._logger(f"{protein.sequence}, descriptors {' '.join(map(str, protein.descriptor))}"
@@ -244,79 +251,17 @@ class ProteinEvolution():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
 
-    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob, weights):
-        def nested_loops(lists, index=0, current_combination=None):
-            """
-            Рекурсивно обходит N вложенных списков.
-
-            Args:
-                lists: Список списков.
-                index: Текущий уровень вложенности (начинается с 0).
-                current_combination: Текущая комбинация элементов (используется для рекурсии).
-
-            Yields:
-                Кортежи, представляющие все возможные комбинации элементов из списков.
-            """
-            if index == len(lists):
-                yield current_combination
-                return
-
-            for item in lists[index]:
-                yield from nested_loops(lists, index + 1,
-                                        current_combination + (item,) if current_combination else (item,))
-
-        def select_elements_distributed(arr, num_elements):
-            """
-            Выбирает num_elements равнораспределенных элементов из массива, включая первый и последний.
-
-            Args:
-                arr: Исходный массив.
-                num_elements: Количество элементов для выбора.
-
-            Returns:
-                Список выбранных элементов или None, если num_elements некорректен или длина массива недостаточна.
-            """
-            n = len(arr)
-            if num_elements < 2 or num_elements > n or n == 0:
-                return arr
-
-            indices = [0]  # Первый элемент
-            if num_elements > 2:
-                step = (n - 1) / (num_elements - 1)  # Шаг между элементами
-                for i in range(1, num_elements - 1):
-                    indices.append(int(round(i * step)))  # Округление для целочисленных индексов
-
-            indices.append(n - 1)  # Последний элемент
-
-            selected_elements = [arr[i] for i in indices]
-            return selected_elements
-
-        weight_line = []
-        copied_list = [list(np.linspace(0, 1, int(pop_count / len(weights)) + 1))]
-        for _ in range(len(weights)):
-            weight_line.append(copied_list[0][:])
-
-        distribution_weights = []
-        for combination in nested_loops(weight_line):
-            if any(combination) == 0:
-                continue
-            total = sum(combination)
-            normalized_comb = [round(x / total, 2) for x in combination]
-            distribution_weights.append(list(np.array(normalized_comb) * weights))
-        unique_weights = list(set(tuple(lst) for lst in distribution_weights))
-        if pop_count == 1:
-            unique_weights = [[1, 1]]
-        sorted_data = sorted(unique_weights, key=lambda x: tuple(x))
-        selected_weights = select_elements_distributed(sorted_data, pop_count)
-
+    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob):
+        distribution_weights = np.linspace(0, 1, pop_count)
+        self.read_computed()
         for i in range(pop_count):
             population = []
-
             self.save_computing(default_sequence, default_descriptors)
 
             while len(population) < pop_size:
                 protein = Protein.create_protein(default_sequence, default_sequence, descriptor=default_descriptors)
                 population.append(protein)
-            pop = Population(population, mut_prob, mut_num, cros_prob, distribution_weights[i])
+            pop = Population(population, mut_prob, mut_num, cros_prob,
+                             [distribution_weights[i], distribution_weights[::-1][i]])
             pop.compute_fitness()
             self._pop_set.append(pop)

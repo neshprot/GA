@@ -17,6 +17,7 @@ descriptors = [float(x) for x in config['PDB']['Descriptors'].split()]
 cros_prob = float(config['PARAMS']['CrosProb'])
 mut_prob = float(config['PARAMS']['MutProb'])
 mut_num = int(config['PARAMS']['MutNum'])
+eval_param = float(config['PARAMS']['EvalParam'])
 pop_size = int(config['PARAMS']['PopSize'])
 weights = [float(x) for x in config['PARAMS']['Weights'].split()]
 compute_lmb_inf = config['COMPUTING']['ComputeLambdaInf']
@@ -50,7 +51,7 @@ constraints.add(f3)
 evolve = ProteinEvolution(pop_set=[], save_file='computed_proteins', logger=logger, positionsset=positionsset, checker=constraints,
                           input_file=compute_lmb_inf, output_file=compute_lmb_ouf, tred_number=tred_number)
 evolve.generate_populations(default_sequence=sequence, default_descriptors=descriptors,
-                               pop_size=pop_size, pop_count=pop_count, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob, weights=weights)
+                               pop_size=pop_size, pop_count=pop_count, mut_prob=mut_prob, mut_num=mut_num, cros_prob=cros_prob)
 ini_step = 1
 sets, pulls, probs, consts = read_replacements('sites')
 
@@ -65,13 +66,16 @@ for population in evolve.pop_set:
 while step < stop_step:
     logger(f"Iteration: {iteration}\n")
     proteins_for_computing = []
+    chunk_numbers = []
     for pop_num, population in enumerate(evolve.pop_set):
         evolve.crossover(population, attempts=attempts, pop_num=pop_num+1)
         evolve.mutation(population, attempts=attempts, iteration=iteration, sets=sets, pulls=pulls, probs=probs,
                         consts=consts, pop_num=pop_num+1)
         population.clear_population()
-        proteins_for_computing += evolve.compute_push(population, pop_num+1)
-    evolve.compute_input(proteins_for_computing)
+        chunk_proteins, chunk_number = evolve.compute_push(population, pop_num+1)
+        proteins_for_computing += chunk_proteins
+        chunk_numbers.append(chunk_number)
+    evolve.compute_input(proteins_for_computing, chunk_numbers)
     evolve.shuffle_pops(pop_size, iteration)
 
     step_checker = []
@@ -94,4 +98,3 @@ while step < stop_step:
         step += 1
     logger(f"Step/Stop {step}/{stop_step}\n\n")
     iteration += 1
-
