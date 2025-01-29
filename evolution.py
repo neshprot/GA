@@ -195,6 +195,7 @@ class ProteinEvolution():
                 for protein in chunk:
                     for idx, g1, g2 in protein.get_differences():
                         ouf.write(f"{g1}/{idx}/{g2} ")
+                    ouf.write("\n")
             os.rename(".tempfile", f'{self._output_file}_{pop_num}_{i+1}')
 
         return proteins_for_computing, number_of_chunks
