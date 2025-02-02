@@ -173,6 +173,9 @@ class ProteinEvolution():
         for protein in population.population:
             if protein.sequence not in self._computed:
                 proteins_for_computing.append(protein)
+            else:
+                values = self._computed[protein.sequence]
+                protein.descriptor = values
 
         # Print to output files
         chunk_size = len(proteins_for_computing) // tred_number
@@ -205,6 +208,7 @@ class ProteinEvolution():
         for pop_num, population in enumerate(self._pop_set):
             descriptors = []
             if not chunk_numbers[pop_num]:
+                population.compute_fitness()
                 continue
             for tred_counter in range(1, chunk_numbers[pop_num] + 1):
                 while not os.path.exists(f'{self._input_file}_{pop_num+1}_{tred_counter}'):
