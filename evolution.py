@@ -171,11 +171,11 @@ class ProteinEvolution():
 
         # Find existing calcs
         for protein in population.population:
-            if protein.sequence not in self._computed:
-                proteins_for_computing.append(protein)
-            else:
-                values = self._computed[protein.sequence]
-                protein.descriptor = values
+#            if protein.sequence not in self._computed:
+            proteins_for_computing.append(protein)
+#            else:
+#                values = self._computed[protein.sequence]
+#                protein.descriptor = values
 
         # Print to output files
         chunk_size = len(proteins_for_computing) // tred_number
@@ -258,7 +258,7 @@ class ProteinEvolution():
 
     def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob):
         distribution_weights = np.linspace(0, 1, pop_count)
-        self.read_computed()
+        #self.read_computed()
         for i in range(pop_count):
             population = []
             self.save_computing(default_sequence, default_descriptors)
