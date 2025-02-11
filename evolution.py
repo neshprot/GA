@@ -192,16 +192,17 @@ class ProteinEvolution():
             if not chunk:
                 break
             number_of_chunks += 1
-            with open(".tempfile", "w") as ouf:
+            with open(".tempfile", "w") as ouf, open(f'{self._input_file}_{pop_num}_{i+1}', 'w') as inf:
                 for protein in chunk:
                     for idx, g1, g2 in protein.get_differences():
                         ouf.write(f"{g1}/{idx}/{g2} ")
                     ouf.write("\n")
+                    inf.write(f"{pop_num} -{random.random()}\n")
             os.rename(".tempfile", f'{self._output_file}_{pop_num}_{i+1}')
 
-        return chunks, number_of_chunks
+        return proteins_for_computing, number_of_chunks
 
-    def compute_input(self, chunks, chunk_numbers):
+    def compute_input(self, proteins_for_computing, chunk_numbers):
         # Wait results
         for pop_num, population in enumerate(self._pop_set):
             descriptors = []
@@ -218,11 +219,9 @@ class ProteinEvolution():
                         values = line.split()
                         descriptors.append([float(value) for value in values])
                 os.remove(f'{self._input_file}_{pop_num+1}_{tred_counter}')
-            i = 0
-            for chunk in chunks:
-                for prot in chunk:
+                os.remove(f'{self._output_file}_{pop_num+1}_{tred_counter}')
+            for i, prot in enumerate(proteins_for_computing):
                     self.save_computing(prot.sequence, descriptors[i])
-                    i += 1
             # Write values to proteins
             for protein in population.population:
                 values = self._computed[protein.sequence]
