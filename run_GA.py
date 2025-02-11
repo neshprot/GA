@@ -92,9 +92,9 @@ while step < stop_step:
         evolve.print_current_population(population)
         logger(f"The best value {pop_num+1}: {' '.join(map(str, best_descriptors[pop_num]))}\n")
         logger("\n")
-    if any(step_checker):
-        step = 0
-    else:
-        step += 1
+    #if any(step_checker):
+    #    step = 0
+    #else:
+    step += 1
     logger(f"Step/Stop {step}/{stop_step}\n\n")
     iteration += 1

@@ -151,7 +151,7 @@ class ProteinEvolution():
     def shuffle_pops(self, pop_size, iteration):
         for population in self._pop_set:
             self.selection(population, pop_size)
-        if iteration % 5 == 0:
+        if iteration % 1000 == 0:
             idx_array = [i for i in range(len(self._pop_set))]
             random.shuffle(idx_array)
             for idx1, idx2 in zip(idx_array[:-1] + [idx_array[0]], idx_array[1:] + [idx_array[-1]]):
@@ -171,11 +171,9 @@ class ProteinEvolution():
 
         # Find existing calcs
         for protein in population.population:
-#            if protein.sequence not in self._computed:
-            proteins_for_computing.append(protein)
-#            else:
-#                values = self._computed[protein.sequence]
-#                protein.descriptor = values
+            if protein.sequence not in self._computed:
+                proteins_for_computing.append(protein)
+                #print(protein.get_differences())
 
         # Print to output files
         chunk_size = len(proteins_for_computing) // tred_number
@@ -192,7 +190,7 @@ class ProteinEvolution():
         # safe each chunk to a separate file
         for i, chunk in enumerate(chunks):
             if not chunk:
-                continue
+                break
             number_of_chunks += 1
             with open(".tempfile", "w") as ouf:
                 for protein in chunk:
@@ -201,9 +199,9 @@ class ProteinEvolution():
                     ouf.write("\n")
             os.rename(".tempfile", f'{self._output_file}_{pop_num}_{i+1}')
 
-        return proteins_for_computing, number_of_chunks
+        return chunks, number_of_chunks
 
-    def compute_input(self, proteins_for_computing, chunk_numbers):
+    def compute_input(self, chunks, chunk_numbers):
         # Wait results
         for pop_num, population in enumerate(self._pop_set):
             descriptors = []
@@ -220,10 +218,11 @@ class ProteinEvolution():
                         values = line.split()
                         descriptors.append([float(value) for value in values])
                 os.remove(f'{self._input_file}_{pop_num+1}_{tred_counter}')
-            len_for_each_pop = len(descriptors)
-            for i in range(len_for_each_pop):
-                self.save_computing(proteins_for_computing[i].sequence, descriptors[i])
-            proteins_for_computing = proteins_for_computing[len_for_each_pop:]
+            i = 0
+            for chunk in chunks:
+                for prot in chunk:
+                    self.save_computing(prot.sequence, descriptors[i])
+                    i += 1
             # Write values to proteins
             for protein in population.population:
                 values = self._computed[protein.sequence]
@@ -258,11 +257,10 @@ class ProteinEvolution():
 
     def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob):
         distribution_weights = np.linspace(0, 1, pop_count)
-        #self.read_computed()
+        self.read_computed()
         for i in range(pop_count):
             population = []
             self.save_computing(default_sequence, default_descriptors)
-
             while len(population) < pop_size:
                 protein = Protein.create_protein(default_sequence, default_sequence, descriptor=default_descriptors)
                 population.append(protein)
