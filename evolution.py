@@ -173,7 +173,6 @@ class ProteinEvolution():
         for protein in population.population:
             if protein.sequence not in self._computed:
                 proteins_for_computing.append(protein)
-                #print(protein.get_differences())
 
         # Print to output files
         chunk_size = len(proteins_for_computing) // tred_number
@@ -197,7 +196,7 @@ class ProteinEvolution():
                     for idx, g1, g2 in protein.get_differences():
                         ouf.write(f"{g1}/{idx}/{g2} ")
                     ouf.write("\n")
-                    inf.write(f"{pop_num} -{random.random()}\n")
+                    inf.write(f"{random.random()}\n")    # debug
             os.rename(".tempfile", f'{self._output_file}_{pop_num}_{i+1}')
 
         return proteins_for_computing, number_of_chunks
@@ -219,14 +218,17 @@ class ProteinEvolution():
                         values = line.split()
                         descriptors.append([float(value) for value in values])
                 os.remove(f'{self._input_file}_{pop_num+1}_{tred_counter}')
-                os.remove(f'{self._output_file}_{pop_num+1}_{tred_counter}')
+                os.remove(f'{self._output_file}_{pop_num+1}_{tred_counter}')    # debug
             for i, prot in enumerate(proteins_for_computing):
                     self.save_computing(prot.sequence, descriptors[i])
             # Write values to proteins
             for protein in population.population:
                 values = self._computed[protein.sequence]
                 protein.descriptor = values
-            population.compute_fitness()
+            try:
+                population.compute_fitness()
+            except ValueError:
+                raise ValueError(f'ERROR: In input file there is invalid number of descriptors.')
 
     def is_stable_protein(self, protein):
         if self._checker is not None:
@@ -239,11 +241,13 @@ class ProteinEvolution():
             with open(self._save_file, 'a') as f:
                 f.write(f"{sequence} {' '.join(map(str, descriptors))}\n")
 
-    def read_computed(self):
+    def read_computed(self, weights):
         if os.path.exists(self._save_file):
             with open(self._save_file, 'r') as inf:
                 for line in inf.readlines():
                     words = line.split()
+                    if (len(words) - 1) != len(weights):
+                        raise ValueError(f'ERROR: in computed_proteins {words[0]} has {len(words) - 1} descriptors, not {len(weights)}')
                     self._computed[words[0]] = [float(desc) for desc in words[1::]]
 
     def print_current_population(self, population):
@@ -254,16 +258,42 @@ class ProteinEvolution():
                 self._logger(f"{g1}/{idx}/{g2} ")
             self._logger("\n")
 
-    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob):
-        distribution_weights = np.linspace(0, 1, pop_count)
-        self.read_computed()
+    def generate_populations(self, default_sequence, default_descriptors, pop_size, pop_count, mut_prob, mut_num, cros_prob, weights):
+        def generate_weighted_sums_grid(n_samples, weights):
+            weights_ranges = [(0, w) for w in weights]
+            linspaces = [np.linspace(wr[0], wr[1], n_samples) for wr in weights_ranges]
+
+            # Создаем сетку всех комбинаций весов
+            mesh = np.meshgrid(*linspaces)
+
+            # Преобразуем сетку в список векторов весов
+            grid_points = np.vstack([m.flatten() for m in mesh]).T
+
+            # Фильтруем точки, где сумма абсолютных значений весов близка к 1 (направления)
+            sums = np.sum(np.abs(grid_points), axis=1)
+            mask = (sums >= 0.9) & (sums <= 1.1)
+            filtered_points = grid_points[mask]
+
+            # Если точек больше, чем нужно, выбираем равномерно n_samples
+            if len(filtered_points) > n_samples:
+                indices = np.linspace(0, len(filtered_points) - 1, n_samples).astype(int)
+                selected_points = filtered_points[indices]
+            else:
+                selected_points = filtered_points
+
+            return selected_points
+        if pop_count > 1:
+            print(pop_count)
+            distribution_weights = generate_weighted_sums_grid(pop_count, weights)
+        else:
+            distribution_weights = [weights]
+        self.read_computed(weights)
         for i in range(pop_count):
             population = []
             self.save_computing(default_sequence, default_descriptors)
             while len(population) < pop_size:
                 protein = Protein.create_protein(default_sequence, default_sequence, descriptor=default_descriptors)
                 population.append(protein)
-            pop = Population(population, mut_prob, mut_num, cros_prob,
-                             [distribution_weights[i], distribution_weights[::-1][i]])
+            pop = Population(population, mut_prob, mut_num, cros_prob, distribution_weights[i])
             pop.compute_fitness()
             self._pop_set.append(pop)
